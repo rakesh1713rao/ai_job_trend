@@ -43,6 +43,40 @@ def insert_api_jobs():
                     VALUES (:title, :company, :location, :description, :posted_date, :source)
                     """), job)
             
-            conn.commit()
+        conn.commit()
           
     print(f" Inserted {len(jobs)} API Jobs ")
+
+
+def insert_job_skills(skill_counts):
+    """Store extracted skill frequencies into the skills and job_skills tables."""
+    with engine.connect() as conn:
+        for skill in skill_counts.keys():
+            # Insert skill if it doesn't exist
+            conn.execute(text("""
+                INSERT OR IGNORE INTO skills (name) VALUES (:name)
+            """), {"name": skill})
+        conn.commit()
+
+        # Now link jobs to skills
+        jobs = conn.execute(text("SELECT id, description FROM jobs")).fetchall()
+        
+        from app.nlp.ml_pipeline import SKILLS_LIST
+        for job_id, description in jobs:
+            desc_lower = description.lower()
+            for skill in SKILLS_LIST:
+                if skill in desc_lower:
+                    # Get skill id
+                    skill_row = conn.execute(
+                        text("SELECT id FROM skills WHERE name = :name"),
+                        {"name": skill}
+                    ).fetchone()
+                    
+                    if skill_row:
+                        conn.execute(text("""
+                            INSERT OR IGNORE INTO job_skills (job_id, skill_id)
+                            VALUES (:job_id, :skill_id)
+                        """), {"job_id": job_id, "skill_id": skill_row[0]})
+        
+        conn.commit()
+    print("✅ Job skills inserted")
