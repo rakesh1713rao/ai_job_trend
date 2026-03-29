@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from app.database.db import engine
 from app.scraper.api_client import fetch_remotive_jobs
+import re
 
 
 def insert_sample_job():
@@ -65,7 +66,8 @@ def insert_job_skills(skill_counts):
         for job_id, description in jobs:
             desc_lower = description.lower()
             for skill in SKILLS_LIST:
-                if skill in desc_lower:
+                pattern = r'\b' + re.escape(skill) + r'\b'
+                if re.search(pattern, desc_lower):
                     # Get skill id
                     skill_row = conn.execute(
                         text("SELECT id FROM skills WHERE name = :name"),
